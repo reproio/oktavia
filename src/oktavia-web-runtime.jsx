@@ -229,7 +229,7 @@ class OktaviaSearchRuntime
             var info = metadata.getInformation(unit.id).split(Oktavia.eob);
 
             //var offset = info[0].length + 1;
-            var content = metadata.getContent(unit.id);
+            var content = metadata.getContentWithEOB(unit.id);
             var start = 0;
             var positions = unit.getPositions();
             if (content.indexOf(info[0]) == 1)

@@ -266,7 +266,7 @@ class OktaviaSearchRuntime
             {
                 text = content.slice(0, end - start) + ' ...<br/>';
             }
-            text = text.replace(Oktavia.eob, ' ').replace(/(<br\/>)(<br\/>)+/, '<br/><br/>');
+            text = text.replace(new RegExp(Oktavia.eob, 'g'), ' ').replace(/(<br\/>)(<br\/>)+/g, '<br/><br/>');
             var resultItem = new JsonResultItem(info[0], info[1], text, unit.score);
             cache.renderedResults[i] = resultItem;
             results.push(resultItem);

@@ -248,13 +248,14 @@ class HTMLParser
     var prefix : string;
     var filter : TagFilter;
 
-    function constructor (unit : int, root : string, prefix : string, filter : string[], stemmer : Nullable.<Stemmer>)
+    function constructor (unit : int, root : string, prefix : string, filter : string[], stemmer : Nullable.<Stemmer>, ignoreCase : boolean)
     {
         this.unit = unit;
         this.root = root;
         this.prefix = prefix;
         this.filter = new TagFilter(filter);
         this.oktavia = new Oktavia();
+        this.oktavia.setIgnoreCase(ignoreCase);
         this.oktavia.addSection('section');
         this.oktavia.addBlock('tag');
         if (stemmer)

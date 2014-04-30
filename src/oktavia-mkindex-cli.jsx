@@ -64,6 +64,7 @@ class _Main
             " -s, --stemmer [algorithm]        : Select stemming algorithm.",
             //" -w, --word-splitter [splitter]   : Use optional word splitter.",
             //"                                  : 'ts' (TinySegmenter for Japanese) is available",
+            " -I, --ignore-case                : ignore case distinctions.",
             "",
             "Text Mode Options:",
             " -r, --root  [document root]      : Document root folder. Default is current. ",
@@ -102,6 +103,7 @@ class _Main
         var type = 'js';
         var mode = '';
         var verbose = true;
+        var ignoreCase = false;
         var filter = [] : string[];
         var algorithm : Nullable.<string> = null;
         //var wordsplitter : Nullable.<string> = null;
@@ -118,7 +120,7 @@ class _Main
         var validTypes = ['index', 'base64', 'cmd', 'js', 'commonjs', 'web'];
         //var validWordSplitters = ['ts'];
 
-        var optstring = "n:(name)q(quiet)m:(mode)i:(input)r:(root)p:(prefix)o:(output)h(help)u:(unit)f:(filter)s:(stemmer)w:(word-splitter)t:(type)c:(cache-density)";
+        var optstring = "n:(name)q(quiet)m:(mode)i:(input)r:(root)p:(prefix)o:(output)h(help)u:(unit)f:(filter)s:(stemmer)w:(word-splitter)t:(type)c:(cache-density)I(ignore-case)";
         var parser = new BasicParser(optstring, args);
         var opt = parser.getopt();
         while (opt)
@@ -193,6 +195,9 @@ class _Main
             /*case "w":
 
                 break;*/
+            case "I":
+                ignoreCase = true;
+                break;
             case "c":
                 var match = /(\d+\.?\d*)/.exec(opt.optarg);
                 if (match)
@@ -279,7 +284,7 @@ class _Main
                 }
                 else
                 {
-                    var htmlParser = new HTMLParser(unitIndex, root, prefix, filter, stemmer);
+                    var htmlParser = new HTMLParser(unitIndex, root, prefix, filter, stemmer, ignoreCase);
                     for (var i = 0; i < inputHTMLFiles.length; i++)
                     {
                         htmlParser.parse(inputHTMLFiles[i]);

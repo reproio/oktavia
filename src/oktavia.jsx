@@ -5,6 +5,7 @@ import "query.jsx";
 import "stemmer.jsx";
 import "./search-result.jsx";
 import "./metadata.jsx";
+import "bit-vector.jsx";
 
 
 class Oktavia
@@ -20,6 +21,10 @@ class Oktavia
     // char code remap tables
     var _utf162compressCode : string[];
     var _compressCode2utf16 : string[];
+
+    var _ignoreCase : boolean;
+    var _upperChars : BitVector;
+    var _upperIndexes : int[];
 
     // sentinels
     static const eof = String.fromCharCode(0);
@@ -40,6 +45,9 @@ class Oktavia
         this._isLastEob = false;
         this._utf162compressCode = [Oktavia.eof, Oktavia.eob, Oktavia.unknown];
         this._compressCode2utf16 = [Oktavia.eof, Oktavia.eob, Oktavia.unknown];
+        this._ignoreCase = false;
+        this._upperChars = null;
+        this._upperIndexes = [] : int[];
     }
 
     function setStemmer (stemmer : Stemmer) : void
@@ -144,6 +152,20 @@ class Oktavia
 
     function addWord (word : string) : void
     {
+        if (this._ignoreCase)
+        {
+            var pos = this._fmindex.contentSize();
+            var lowerWord = word.toLowerCase();
+            for (var i = 0; i < word.length; i++)
+            {
+                if (lowerWord.charAt(i) != word.charAt(i))
+                {
+                    this._upperIndexes.push(pos + i);
+                }
+            }
+            word = lowerWord;
+        }
+
         var str = '';
         for (var i = 0; i < word.length; i++)
         {
@@ -236,6 +258,9 @@ class Oktavia
                     for (var i = 0; i < stemmedList.length; i++)
                     {
                         var word = stemmedList[i];
+                        if (this._ignoreCase) {
+                            word = word.toLowerCase();
+                        }
                         result = result.concat(this._fmindex.search(word));
                     }
                 }
@@ -243,6 +268,9 @@ class Oktavia
         }
         else
         {
+            if (this._ignoreCase) {
+                keyword = keyword.toLowerCase();
+            }
             result = this._fmindex.search(this._convertToCompressionCode(keyword));
         }
         return result;
@@ -298,6 +326,10 @@ class Oktavia
         {
             this._metadatas[key]._build();
         }
+        if (this._ignoreCase) {
+            this._buildUpperChars();
+        }
+
         var maxCharCode = this._compressCode2utf16.length;
         var cacheRange = Math.round(Math.max(1, (100 / Math.min(100, Math.max(0.01, cacheDensity)))));
         this._fmindex.build(cacheRange, maxCharCode);
@@ -344,6 +376,15 @@ class Oktavia
             if (verbose)
             {
                 console.log('Meta Data ' + name + ': ' + ((output._output.length - size) * 2) as string + ' bytes');
+            }
+        }
+
+        output.dump16bitNumber(this._ignoreCase ? 1 : 0);
+        if (this._ignoreCase) {
+            this._upperChars.dump(output);
+            if (verbose)
+            {
+                console.log('Upper Charactors ' + name + ': ' + ((output._output.length - size) * 2) as string + ' bytes');
             }
         }
         return output.result();
@@ -397,6 +438,11 @@ class Oktavia
                 throw new Error("Metadata TypeError:" + type as string);
             }
         }
+        this._ignoreCase = !!input.load16bitNumber();
+        if (this._ignoreCase) {
+            this._upperChars = BitVector.load(input);
+        }
+
         this._build = true;
     }
 
@@ -440,8 +486,15 @@ class Oktavia
             var code = result.charCodeAt(i);
             if (code > 2)
             {
-                str += this._compressCode2utf16[code];
+                var c = this._compressCode2utf16[code];
+                if (this._ignoreCase &&
+                    this._upperChars.get(position + i))
+                {
+                    c = c.toUpperCase();
+                }
+                str += c;
             }
+
         }
         return str;
     }
@@ -455,7 +508,13 @@ class Oktavia
             var code = result.charCodeAt(i);
             if (code > 2)
             {
-                str += this._compressCode2utf16[code];
+                var c = this._compressCode2utf16[code];
+                if (this._ignoreCase &&
+                    this._upperChars.get(position + i))
+                {
+                    c = c.toUpperCase();
+                }
+                str += c;
             }
             else if (code == 1)
             {
@@ -463,5 +522,31 @@ class Oktavia
             }
         }
         return str;
+    }
+
+    function getIgnoreCase () : boolean
+    {
+        return this._ignoreCase;
+    }
+
+    function setIgnoreCase (ignoreCase : boolean) : void
+    {
+        this._ignoreCase = ignoreCase;
+    }
+
+    function _buildUpperChars () : void
+    {
+        this._upperChars = BitVector.create(this._fmindex.contentSize());
+        for (var i = 0, len = this._upperIndexes.length; i < len; i++)
+        {
+            this._upperChars.set1(this._upperIndexes[i]);
+        }
+        // `Uint32BitVector` is fixed size. But constructor not save the arguments of size.
+        // The size is set only when call `set0`/`set1`.
+        if (this._upperIndexes[this._upperIndexes.length - 1] != this._fmindex.contentSize() - 1)
+        {
+            this._upperChars.set0(this._fmindex.contentSize() - 1);
+        }   
+        this._upperChars.build();
     }
 }
